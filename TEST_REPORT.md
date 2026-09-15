@@ -35,12 +35,13 @@ python main.py --capture-screenshots docs/screenshots
 | 四方向覆盖 | 每个关卡都包含上、下、左、右 |
 | 关卡可解性 | 深度优先搜索为 5 关都找到完整解序列 |
 | 界面渲染 | 开始、游戏、通关、失败、全部通关五种状态均无异常 |
+| Windows 字体兼容 | 绕过异常的 Pygame 系统字体索引，直接加载微软雅黑字体文件，中文渲染正常 |
 | README 截图 | 4 张 PNG 成功生成并人工检查，无文字重叠或字体缺失 |
 
 ## 最终自动测试输出摘要
 
 ```text
-Ran 15 tests in 1.157s
+Ran 16 tests in 2.360s
 
 OK
 ```

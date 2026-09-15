@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+import os
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -35,7 +36,11 @@ WHITE = (255, 255, 255)
 
 
 def make_font(size: int, bold: bool = False) -> pygame.font.Font:
-    """优先选择包含中文字符的系统字体。"""
+    """优先选择包含中文字符的系统字体。
+
+    某些 Windows + Python 3.13 环境下，Pygame 的 ``SysFont`` 无法正确
+    处理字体名称列表，因此这里逐个查找字体文件，再交给 ``Font`` 加载。
+    """
 
     candidates = [
         "Microsoft YaHei UI",
@@ -44,7 +49,35 @@ def make_font(size: int, bold: bool = False) -> pygame.font.Font:
         "Noto Sans CJK SC",
         "Arial Unicode MS",
     ]
-    return pygame.font.SysFont(candidates, size, bold=bold)
+
+    # Windows 常见中文字体直接按文件加载，可绕开部分环境中损坏的
+    # Pygame 系统字体索引（用户截图中的 splitext TypeError 即来自该索引）。
+    if os.name == "nt":
+        font_directory = Path(os.environ.get("WINDIR", "C:/Windows")) / "Fonts"
+        filenames = (
+            ["msyhbd.ttc", "msyh.ttc", "simhei.ttf"]
+            if bold
+            else ["msyh.ttc", "msyhbd.ttc", "simhei.ttf"]
+        )
+        for filename in filenames:
+            font_path = font_directory / filename
+            if font_path.is_file():
+                try:
+                    return pygame.font.Font(str(font_path), size)
+                except (OSError, pygame.error):
+                    continue
+
+    for candidate in candidates:
+        try:
+            font_path = pygame.font.match_font(candidate, bold=bold)
+        except (OSError, TypeError, ValueError):
+            # 系统字体表中存在异常条目时继续尝试下一个候选字体。
+            continue
+        if font_path:
+            return pygame.font.Font(font_path, size)
+
+    # 极少数系统没有上述中文字体时，仍保证程序可以启动。
+    return pygame.font.Font(None, size)
 
 
 def draw_text(
