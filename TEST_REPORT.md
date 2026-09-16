@@ -47,7 +47,7 @@ python main.py --capture-screenshots docs/screenshots
 ## 最终自动测试输出摘要
 
 ```text
-Ran 24 tests in 1.306s
+Ran 24 tests
 
 OK
 ```

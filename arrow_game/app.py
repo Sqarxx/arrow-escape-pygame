@@ -21,19 +21,22 @@ BOARD_LEFT = 58
 BOARD_TOP = 142
 CELL_SIZE = 78
 
-BG_TOP = (18, 31, 53)
-BG_BOTTOM = (29, 53, 82)
-PANEL = (245, 248, 252)
-BOARD_BG = (231, 239, 247)
-GRID = (198, 213, 227)
-INK = (30, 47, 68)
-MUTED = (91, 109, 129)
-BLUE = (39, 134, 246)
-BLUE_DARK = (27, 105, 208)
-CYAN = (57, 203, 192)
-ORANGE = (246, 158, 68)
-RED = (234, 78, 91)
+BG_TOP = (249, 252, 251)
+BG_BOTTOM = (229, 245, 241)
+PANEL = (255, 255, 255)
+BOARD_BG = (222, 241, 237)
+GRID = (190, 221, 215)
+INK = (31, 65, 61)
+MUTED = (93, 121, 117)
+BLUE = (30, 164, 147)
+BLUE_DARK = (20, 136, 123)
+CYAN = (82, 194, 178)
+ORANGE = (238, 168, 96)
+RED = (225, 111, 119)
 WHITE = (255, 255, 255)
+SOFT_TEAL = (234, 248, 245)
+SOFT_RED = (255, 235, 237)
+SHADOW = (180, 205, 200)
 LEVEL_TIME_TARGETS = (25, 32, 40, 48, 60)
 
 
@@ -115,11 +118,11 @@ class Button:
             text_color = WHITE
             border_color = color
         else:
-            color = (224, 234, 244) if hovered else WHITE
+            color = SOFT_TEAL if hovered else WHITE
             text_color = INK
             border_color = GRID
         shadow = self.rect.move(0, 4)
-        pygame.draw.rect(surface, (13, 25, 43, 70), shadow, border_radius=14)
+        pygame.draw.rect(surface, SHADOW, shadow, border_radius=14)
         pygame.draw.rect(surface, color, self.rect, border_radius=14)
         pygame.draw.rect(surface, border_color, self.rect, 2, border_radius=14)
         draw_text(surface, self.text, font, text_color, self.rect.center, "center")
@@ -572,17 +575,17 @@ class GameApp:
             )
             pygame.draw.line(self.screen, color, (0, y), (WINDOW_WIDTH, y))
         for x, y, radius, alpha in (
-            (90, 80, 150, 12),
-            (900, 120, 190, 10),
-            (820, 700, 240, 8),
+            (80, 60, 145, 42),
+            (920, 100, 175, 34),
+            (850, 720, 220, 28),
         ):
             glow = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(glow, (*CYAN, alpha), (radius, radius), radius)
+            pygame.draw.circle(glow, (*CYAN, alpha), (radius, radius), radius, 2)
             self.screen.blit(glow, (x - radius, y - radius))
 
     def draw_start_screen(self) -> None:
         mouse = pygame.mouse.get_pos()
-        draw_text(self.screen, "一箭又一箭", self.font_xl, WHITE, (500, 150), "center")
+        draw_text(self.screen, "一箭又一箭", self.font_xl, INK, (500, 150), "center")
         draw_text(
             self.screen,
             "ARROW  ESCAPE",
@@ -595,7 +598,7 @@ class GameApp:
             self.screen,
             "看清方向 · 判断阻挡 · 按序清空棋盘",
             self.font_body,
-            (188, 205, 222),
+            MUTED,
             (500, 253),
             "center",
         )
@@ -609,7 +612,7 @@ class GameApp:
             self.screen,
             "R 重开｜H 提示｜U 撤销｜A 自动解题｜Esc 返回",
             self.font_small,
-            (159, 179, 201),
+            MUTED,
             (500, 633),
             "center",
         )
@@ -618,19 +621,19 @@ class GameApp:
             self.screen,
             f"已解锁 {self.progress.unlocked_level + 1}/{len(LEVELS)} 关  ·  累计 {total_stars} 星",
             self.font_small,
-            (115, 140, 166),
+            MUTED,
             (500, 674),
             "center",
         )
 
     def draw_level_select_screen(self) -> None:
         mouse = pygame.mouse.get_pos()
-        draw_text(self.screen, "选择关卡", self.font_xl, WHITE, (500, 72), "center")
+        draw_text(self.screen, "选择关卡", self.font_xl, INK, (500, 72), "center")
         draw_text(
             self.screen,
             "完成当前关卡后自动解锁下一关，最佳成绩会自动保存",
             self.font_body,
-            (174, 194, 216),
+            MUTED,
             (500, 126),
             "center",
         )
@@ -638,12 +641,12 @@ class GameApp:
             rect = self.level_card_rect(index)
             unlocked = self.progress.is_unlocked(index)
             hovered = unlocked and rect.collidepoint(mouse)
-            color = WHITE if unlocked else (71, 88, 108)
+            color = WHITE if unlocked else (239, 245, 243)
             if hovered:
-                color = (229, 240, 251)
-            pygame.draw.rect(self.screen, (9, 20, 36), rect.move(0, 5), border_radius=20)
+                color = SOFT_TEAL
+            pygame.draw.rect(self.screen, SHADOW, rect.move(0, 4), border_radius=20)
             pygame.draw.rect(self.screen, color, rect, border_radius=20)
-            border = BLUE if hovered else ((124, 143, 165) if unlocked else (86, 104, 124))
+            border = BLUE if hovered else (GRID if unlocked else (207, 220, 216))
             pygame.draw.rect(self.screen, border, rect, 2, border_radius=20)
 
             if unlocked:
@@ -683,7 +686,7 @@ class GameApp:
                     self.screen,
                     "未解锁",
                     self.font_md,
-                    (174, 189, 205),
+                    (148, 166, 162),
                     rect.center,
                     "center",
                 )
@@ -709,17 +712,17 @@ class GameApp:
                         star_center[1] + math.sin(angle) * point_radius,
                     )
                 )
-            color = ORANGE if index < filled else (185, 198, 211)
+            color = ORANGE if index < filled else (188, 207, 203)
             if index < filled:
                 pygame.draw.polygon(self.screen, color, points)
             else:
                 pygame.draw.polygon(self.screen, color, points, 2)
 
     def draw_logo(self, center: tuple[int, int]) -> None:
-        pygame.draw.circle(self.screen, (31, 65, 94), center, 88)
+        pygame.draw.circle(self.screen, SOFT_TEAL, center, 88)
         pygame.draw.circle(self.screen, CYAN, center, 88, 3)
         arrow = Arrow(0, 0, Direction.RIGHT)
-        self.draw_arrow_icon(self.screen, arrow, center, 68, WHITE)
+        self.draw_arrow_icon(self.screen, arrow, center, 68, BLUE)
         for angle in (45, 135, 225, 315):
             radians = math.radians(angle)
             point = (
@@ -734,14 +737,14 @@ class GameApp:
             self.screen,
             f"第 {self.level_index + 1} 关  ·  {self.level.name}",
             self.font_lg,
-            WHITE,
+            INK,
             (58, 58),
         )
         draw_text(
             self.screen,
             "点击箭头，前方无遮挡即可飞出",
             self.font_small,
-            (164, 184, 207),
+            MUTED,
             (60, 106),
         )
         self.draw_board(mouse)
@@ -751,13 +754,18 @@ class GameApp:
         if self.toast_time > 0:
             toast_width = min(520, max(270, len(self.toast) * 22 + 48))
             toast = pygame.Rect((WINDOW_WIDTH - toast_width) // 2, 704, toast_width, 38)
-            pygame.draw.rect(self.screen, (12, 24, 41), toast, border_radius=19)
-            draw_text(self.screen, self.toast, self.font_small, WHITE, toast.center, "center")
+            warning = "阻挡" in self.toast or "失败" in self.toast or "没有" in self.toast
+            toast_color = SOFT_RED if warning else SOFT_TEAL
+            text_color = RED if warning else INK
+            border_color = RED if warning else CYAN
+            pygame.draw.rect(self.screen, toast_color, toast, border_radius=19)
+            pygame.draw.rect(self.screen, border_color, toast, 1, border_radius=19)
+            draw_text(self.screen, self.toast, self.font_small, text_color, toast.center, "center")
 
     def draw_board(self, mouse: tuple[int, int]) -> None:
         rect = self.board_rect
         shadow = rect.inflate(16, 16).move(0, 7)
-        pygame.draw.rect(self.screen, (10, 21, 37), shadow, border_radius=22)
+        pygame.draw.rect(self.screen, SHADOW, shadow, border_radius=22)
         pygame.draw.rect(self.screen, BOARD_BG, rect.inflate(16, 16), border_radius=22)
 
         for row in range(self.board.rows):
@@ -768,7 +776,7 @@ class GameApp:
                     CELL_SIZE,
                     CELL_SIZE,
                 )
-                color = (239, 245, 250) if (row + col) % 2 == 0 else (228, 237, 246)
+                color = WHITE if (row + col) % 2 == 0 else (240, 249, 247)
                 pygame.draw.rect(self.screen, color, cell)
                 pygame.draw.rect(self.screen, GRID, cell, 1)
 
@@ -844,7 +852,9 @@ class GameApp:
 
     def draw_side_panel(self, mouse: tuple[int, int]) -> None:
         panel = pygame.Rect(654, 142, 304, 570)
+        pygame.draw.rect(self.screen, SHADOW, panel.move(0, 5), border_radius=22)
         pygame.draw.rect(self.screen, PANEL, panel, border_radius=22)
+        pygame.draw.rect(self.screen, GRID, panel, 1, border_radius=22)
         draw_text(self.screen, "关卡状态", self.font_md, INK, (684, 175))
         self.draw_stat_card((684, 224), "剩余箭头", str(self.board.remaining), BLUE)
         self.draw_stat_card((684, 313), "失误机会", str(self.board.mistakes_left), RED)
@@ -865,7 +875,9 @@ class GameApp:
         accent: tuple[int, int, int],
     ) -> None:
         rect = pygame.Rect(position[0], position[1], 250, 72)
-        pygame.draw.rect(self.screen, WHITE, rect, border_radius=14)
+        fill = SOFT_RED if accent == RED else SOFT_TEAL
+        pygame.draw.rect(self.screen, fill, rect, border_radius=14)
+        pygame.draw.rect(self.screen, GRID, rect, 1, border_radius=14)
         pygame.draw.rect(self.screen, accent, (rect.x, rect.y, 7, rect.height), border_radius=4)
         draw_text(self.screen, label, self.font_small, MUTED, (rect.x + 25, rect.y + 13))
         draw_text(self.screen, value, self.font_md, accent, (rect.right - 22, rect.centery), "midright")
@@ -873,7 +885,9 @@ class GameApp:
     def draw_result_screen(self, success: bool) -> None:
         mouse = pygame.mouse.get_pos()
         card = pygame.Rect(260, 120, 480, 540)
+        pygame.draw.rect(self.screen, SHADOW, card.move(0, 5), border_radius=28)
         pygame.draw.rect(self.screen, PANEL, card, border_radius=28)
+        pygame.draw.rect(self.screen, GRID, card, 1, border_radius=28)
         color = CYAN if success else RED
         pygame.draw.circle(self.screen, color, (500, 230), 64)
         if success:
@@ -923,7 +937,9 @@ class GameApp:
     def draw_complete_screen(self) -> None:
         mouse = pygame.mouse.get_pos()
         card = pygame.Rect(230, 104, 540, 560)
+        pygame.draw.rect(self.screen, SHADOW, card.move(0, 5), border_radius=30)
         pygame.draw.rect(self.screen, PANEL, card, border_radius=30)
+        pygame.draw.rect(self.screen, GRID, card, 1, border_radius=30)
         for radius, color in ((76, BLUE), (57, CYAN), (36, ORANGE)):
             pygame.draw.circle(self.screen, color, (500, 235), radius, 4)
         draw_text(self.screen, "★", self.font_xl, ORANGE, (500, 230), "center")
