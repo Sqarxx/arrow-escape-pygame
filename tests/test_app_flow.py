@@ -46,7 +46,14 @@ class AppFlowTests(unittest.TestCase):
         self.assertEqual(self.app.board.mistakes_left, self.app.level.mistakes)
 
     def test_all_screens_can_be_drawn(self) -> None:
-        for state in ("start", "playing", "level_clear", "failed", "complete"):
+        for state in (
+            "start",
+            "level_select",
+            "playing",
+            "level_clear",
+            "failed",
+            "complete",
+        ):
             with self.subTest(state=state):
                 self.app.state = state
                 self.app.draw()
@@ -56,6 +63,33 @@ class AppFlowTests(unittest.TestCase):
         rendered = font.render("一箭又一箭", True, (255, 255, 255))
         self.assertGreater(rendered.get_width(), 0)
         self.assertGreater(rendered.get_height(), 0)
+
+    def test_undo_restores_removed_arrow(self) -> None:
+        self.app.start_level(0)
+        initial = self.app.board.state_key()
+        self.app.click_arrow((1, 2))
+        self.assertNotEqual(self.app.board.state_key(), initial)
+        self.app.undo_move()
+        self.assertEqual(self.app.board.state_key(), initial)
+        self.assertEqual(self.app.level_clicks, 0)
+
+    def test_auto_solver_completes_level_and_earns_one_star(self) -> None:
+        self.app.start_level(0)
+        self.app.start_auto_solve()
+        for _ in range(30):
+            self.app.update(0.6)
+            if self.app.state == "level_clear":
+                break
+        self.assertEqual(self.app.state, "level_clear")
+        self.assertTrue(self.app.auto_used)
+        self.assertEqual(self.app.result_stars, 1)
+
+    def test_completion_unlocks_next_level(self) -> None:
+        self.app.start_level(0)
+        for position in find_solution(self.app.board) or []:
+            self.app.click_arrow(position)
+            self.app.update(0.6)
+        self.assertTrue(self.app.progress.is_unlocked(1))
 
 
 if __name__ == "__main__":

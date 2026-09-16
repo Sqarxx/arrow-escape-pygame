@@ -10,3 +10,5 @@ build/
 *.spec
 *.log
 ~$*
+save_data.json
+save_data.json.tmp

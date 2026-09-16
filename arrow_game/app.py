@@ -9,8 +9,9 @@ from pathlib import Path
 
 import pygame
 
-from .core import Arrow, ClickResult, Direction, find_solution
+from .core import Arrow, Board, ClickResult, Direction, find_solution
 from .levels import LEVELS
+from .progress import ProgressData, ProgressStore, calculate_rating
 
 
 WINDOW_WIDTH = 1000
@@ -33,6 +34,7 @@ CYAN = (57, 203, 192)
 ORANGE = (246, 158, 68)
 RED = (234, 78, 91)
 WHITE = (255, 255, 255)
+LEVEL_TIME_TARGETS = (25, 32, 40, 48, 60)
 
 
 def make_font(size: int, bold: bool = False) -> pygame.font.Font:
@@ -155,10 +157,22 @@ class CollisionAnimation:
         return self.elapsed >= self.duration
 
 
+@dataclass(slots=True)
+class GameSnapshot:
+    board: Board
+    level_clicks: int
+    hints_used: int
+    elapsed_time: float
+
+
 class GameApp:
     """小游戏应用。游戏状态只在此处负责切换，规则由 Board 负责。"""
 
-    def __init__(self, headless: bool = False) -> None:
+    def __init__(
+        self,
+        headless: bool = False,
+        save_path: str | Path | None = None,
+    ) -> None:
         pygame.init()
         pygame.display.set_caption("一箭又一箭 · Arrow Escape")
         flags = pygame.HIDDEN if headless else 0
@@ -166,10 +180,27 @@ class GameApp:
         self.clock = pygame.time.Clock()
         self.running = True
         self.state = "start"
+        if save_path is None and not headless:
+            save_path = Path(__file__).resolve().parent.parent / "save_data.json"
+        self.progress_store = (
+            ProgressStore(save_path, len(LEVELS)) if save_path is not None else None
+        )
+        self.progress = (
+            self.progress_store.load() if self.progress_store else ProgressData()
+        )
         self.level_index = 0
         self.board = LEVELS[0].create_board()
         self.elapsed_time = 0.0
         self.level_clicks = 0
+        self.hints_used = 0
+        self.auto_used = False
+        self.history: list[GameSnapshot] = []
+        self.auto_solving = False
+        self.auto_queue: list[tuple[int, int]] = []
+        self.auto_delay = 0.0
+        self.completion_recorded = False
+        self.result_stars = 0
+        self.result_score = 0
         self.flying: list[FlyingAnimation] = []
         self.collision: CollisionAnimation | None = None
         self.hint_position: tuple[int, int] | None = None
@@ -183,12 +214,16 @@ class GameApp:
         self.font_body = make_font(20)
         self.font_small = make_font(16)
 
-        self.start_button = Button(pygame.Rect(385, 500, 230, 62), "开始游戏")
-        self.restart_button = Button(pygame.Rect(684, 512, 250, 52), "重新开始", False)
-        self.hint_button = Button(pygame.Rect(684, 578, 250, 52), "提示一步", False)
-        self.home_button = Button(pygame.Rect(684, 644, 250, 52), "返回首页", False)
-        self.result_primary = Button(pygame.Rect(362, 485, 276, 58), "下一关")
-        self.result_secondary = Button(pygame.Rect(362, 558, 276, 52), "重玩本关", False)
+        self.start_button = Button(pygame.Rect(385, 480, 230, 58), "开始游戏")
+        self.select_button = Button(pygame.Rect(385, 550, 230, 52), "关卡选择", False)
+        self.restart_button = Button(pygame.Rect(684, 500, 120, 46), "重新开始", False)
+        self.undo_button = Button(pygame.Rect(814, 500, 120, 46), "撤销一步", False)
+        self.hint_button = Button(pygame.Rect(684, 558, 120, 46), "提示一步", False)
+        self.auto_button = Button(pygame.Rect(814, 558, 120, 46), "AI 解题", False)
+        self.home_button = Button(pygame.Rect(684, 616, 250, 46), "返回首页", False)
+        self.select_home_button = Button(pygame.Rect(375, 642, 250, 50), "返回首页", False)
+        self.result_primary = Button(pygame.Rect(362, 510, 276, 56), "下一关")
+        self.result_secondary = Button(pygame.Rect(362, 580, 276, 50), "重玩本关", False)
 
     @property
     def level(self):  # 类型由 LEVELS 决定，避免界面层重复导入注解。
@@ -203,6 +238,14 @@ class GameApp:
             self.board.rows * CELL_SIZE,
         )
 
+    def level_card_rect(self, index: int) -> pygame.Rect:
+        row, col = divmod(index, 3)
+        count_in_row = min(3, len(LEVELS) - row * 3)
+        width, height, gap = 220, 176, 28
+        row_width = count_in_row * width + (count_in_row - 1) * gap
+        start_x = (WINDOW_WIDTH - row_width) // 2
+        return pygame.Rect(start_x + col * (width + gap), 174 + row * 216, width, height)
+
     def run(self) -> None:
         while self.running:
             dt = self.clock.tick(FPS) / 1000.0
@@ -213,11 +256,22 @@ class GameApp:
         pygame.quit()
 
     def start_level(self, index: int) -> None:
+        if not 0 <= index < len(LEVELS):
+            raise IndexError("关卡编号越界")
         self.level_index = index
         self.board = LEVELS[index].create_board()
         self.state = "playing"
         self.elapsed_time = 0.0
         self.level_clicks = 0
+        self.hints_used = 0
+        self.auto_used = False
+        self.history.clear()
+        self.auto_solving = False
+        self.auto_queue.clear()
+        self.auto_delay = 0.0
+        self.completion_recorded = False
+        self.result_stars = 0
+        self.result_score = 0
         self.flying.clear()
         self.collision = None
         self.hint_position = None
@@ -227,6 +281,89 @@ class GameApp:
 
     def restart_level(self) -> None:
         self.start_level(self.level_index)
+
+    def save_progress(self) -> None:
+        if self.progress_store is None:
+            return
+        try:
+            self.progress_store.save(self.progress)
+        except OSError:
+            self.toast = "存档写入失败，本局仍可继续"
+            self.toast_time = 2.0
+
+    def current_snapshot(self) -> GameSnapshot:
+        return GameSnapshot(
+            self.board.copy(),
+            self.level_clicks,
+            self.hints_used,
+            self.elapsed_time,
+        )
+
+    def stop_auto_solve(self, show_message: bool = False) -> None:
+        was_running = self.auto_solving
+        self.auto_solving = False
+        self.auto_queue.clear()
+        if was_running and show_message:
+            self.toast = "已停止 AI 自动解题"
+            self.toast_time = 1.2
+
+    def undo_move(self) -> None:
+        self.stop_auto_solve()
+        if not self.history:
+            self.toast = "还没有可以撤销的操作"
+            self.toast_time = 1.2
+            return
+        snapshot = self.history.pop()
+        self.board = snapshot.board
+        self.level_clicks = snapshot.level_clicks
+        self.hints_used = snapshot.hints_used
+        self.elapsed_time = snapshot.elapsed_time
+        self.flying.clear()
+        self.collision = None
+        self.hint_position = None
+        self.toast = "已撤销上一步"
+        self.toast_time = 1.2
+
+    def start_auto_solve(self) -> None:
+        if self.auto_solving:
+            self.stop_auto_solve(show_message=True)
+            return
+        if self.flying or self.collision is not None:
+            return
+        solution = find_solution(self.board)
+        if not solution:
+            self.toast = "当前状态没有可用的自动解法"
+            self.toast_time = 1.5
+            return
+        self.auto_solving = True
+        self.auto_used = True
+        self.auto_queue = solution
+        self.auto_delay = 0.45
+        self.toast = "AI 正在按求解序列演示"
+        self.toast_time = 1.5
+
+    def finish_level(self) -> None:
+        if self.completion_recorded:
+            return
+        target = LEVEL_TIME_TARGETS[min(self.level_index, len(LEVEL_TIME_TARGETS) - 1)]
+        self.result_stars, self.result_score = calculate_rating(
+            self.board.max_mistakes,
+            self.board.mistakes_left,
+            self.elapsed_time,
+            self.hints_used,
+            target,
+            self.auto_used,
+        )
+        self.progress.record_completion(
+            self.level_index,
+            self.result_stars,
+            self.result_score,
+            self.elapsed_time,
+            len(LEVELS),
+        )
+        self.save_progress()
+        self.completion_recorded = True
+        self.auto_solving = False
 
     def handle_events(self) -> None:
         for event in pygame.event.get():
@@ -242,14 +379,19 @@ class GameApp:
             if self.state == "start":
                 self.running = False
             else:
+                self.stop_auto_solve()
                 self.state = "start"
         elif self.state == "start" and key in (pygame.K_RETURN, pygame.K_SPACE):
-            self.start_level(0)
+            self.start_level(self.progress.unlocked_level)
         elif self.state == "playing":
             if key == pygame.K_r:
                 self.restart_level()
             elif key == pygame.K_h:
                 self.show_hint()
+            elif key == pygame.K_u:
+                self.undo_move()
+            elif key == pygame.K_a:
+                self.start_auto_solve()
         elif self.state == "level_clear" and key in (pygame.K_RETURN, pygame.K_SPACE):
             self.go_to_next_level()
         elif self.state == "failed" and key in (pygame.K_RETURN, pygame.K_SPACE, pygame.K_r):
@@ -260,19 +402,39 @@ class GameApp:
     def handle_click(self, position: tuple[int, int]) -> None:
         if self.state == "start":
             if self.start_button.hit(position):
-                self.start_level(0)
+                self.start_level(self.progress.unlocked_level)
+            elif self.select_button.hit(position):
+                self.state = "level_select"
+            return
+
+        if self.state == "level_select":
+            if self.select_home_button.hit(position):
+                self.state = "start"
+                return
+            for index in range(len(LEVELS)):
+                if self.level_card_rect(index).collidepoint(position):
+                    if self.progress.is_unlocked(index):
+                        self.start_level(index)
+                    return
             return
 
         if self.state == "playing":
             if self.restart_button.hit(position):
                 self.restart_level()
+            elif self.undo_button.hit(position):
+                self.undo_move()
             elif self.hint_button.hit(position):
+                self.stop_auto_solve()
                 self.show_hint()
+            elif self.auto_button.hit(position):
+                self.start_auto_solve()
             elif self.home_button.hit(position):
+                self.stop_auto_solve()
                 self.state = "start"
             elif not self.flying and self.collision is None:
                 cell = self.pixel_to_cell(position)
                 if cell is not None:
+                    self.stop_auto_solve()
                     self.click_arrow(cell)
             return
 
@@ -307,6 +469,9 @@ class GameApp:
         )
 
     def click_arrow(self, position: tuple[int, int]) -> None:
+        if position not in self.board.arrows:
+            return
+        self.history.append(self.current_snapshot())
         blocker = self.board.blocker_for(position)
         result, arrow = self.board.click(position)
         if result is ClickResult.EMPTY or arrow is None:
@@ -332,6 +497,7 @@ class GameApp:
             return
         solution = find_solution(self.board)
         if solution:
+            self.hints_used += 1
             self.hint_position = solution[0]
             self.hint_time = 2.0
             self.toast = "蓝色光圈标出了可安全飞出的箭头"
@@ -361,16 +527,34 @@ class GameApp:
             self.hint_position = None
         self.toast_time = max(0.0, self.toast_time - dt)
 
+        if (
+            self.state == "playing"
+            and self.auto_solving
+            and not self.flying
+            and self.collision is None
+            and not self.board.is_cleared
+        ):
+            self.auto_delay -= dt
+            if self.auto_delay <= 0 and self.auto_queue:
+                next_position = self.auto_queue.pop(0)
+                if next_position in self.board.arrows:
+                    self.click_arrow(next_position)
+                self.auto_delay = 0.22
+
         if self.state == "playing" and not self.flying and self.collision is None:
             if self.board.is_failed:
+                self.auto_solving = False
                 self.state = "failed"
             elif self.board.is_cleared:
+                self.finish_level()
                 self.state = "level_clear"
 
     def draw(self) -> None:
         self.draw_background()
         if self.state == "start":
             self.draw_start_screen()
+        elif self.state == "level_select":
+            self.draw_level_select_screen()
         elif self.state == "playing":
             self.draw_game_screen()
         elif self.state == "level_clear":
@@ -416,23 +600,120 @@ class GameApp:
             "center",
         )
         self.draw_logo((500, 365))
+        self.start_button.text = (
+            "继续游戏" if self.progress.unlocked_level > 0 else "开始游戏"
+        )
         self.start_button.draw(self.screen, self.font_md, mouse)
+        self.select_button.draw(self.screen, self.font_body, mouse)
         draw_text(
             self.screen,
-            "鼠标点击箭头｜R 重新开始｜H 提示｜Esc 返回",
+            "R 重开｜H 提示｜U 撤销｜A 自动解题｜Esc 返回",
             self.font_small,
             (159, 179, 201),
-            (500, 600),
+            (500, 633),
             "center",
         )
+        total_stars = sum(record.stars for record in self.progress.records.values())
         draw_text(
             self.screen,
-            f"原创 {len(LEVELS)} 关 · 每关均通过自动求解验证",
+            f"已解锁 {self.progress.unlocked_level + 1}/{len(LEVELS)} 关  ·  累计 {total_stars} 星",
             self.font_small,
             (115, 140, 166),
-            (500, 650),
+            (500, 674),
             "center",
         )
+
+    def draw_level_select_screen(self) -> None:
+        mouse = pygame.mouse.get_pos()
+        draw_text(self.screen, "选择关卡", self.font_xl, WHITE, (500, 72), "center")
+        draw_text(
+            self.screen,
+            "完成当前关卡后自动解锁下一关，最佳成绩会自动保存",
+            self.font_body,
+            (174, 194, 216),
+            (500, 126),
+            "center",
+        )
+        for index, level in enumerate(LEVELS):
+            rect = self.level_card_rect(index)
+            unlocked = self.progress.is_unlocked(index)
+            hovered = unlocked and rect.collidepoint(mouse)
+            color = WHITE if unlocked else (71, 88, 108)
+            if hovered:
+                color = (229, 240, 251)
+            pygame.draw.rect(self.screen, (9, 20, 36), rect.move(0, 5), border_radius=20)
+            pygame.draw.rect(self.screen, color, rect, border_radius=20)
+            border = BLUE if hovered else ((124, 143, 165) if unlocked else (86, 104, 124))
+            pygame.draw.rect(self.screen, border, rect, 2, border_radius=20)
+
+            if unlocked:
+                record = self.progress.record_for(index)
+                draw_text(
+                    self.screen,
+                    f"第 {index + 1} 关",
+                    self.font_small,
+                    BLUE,
+                    (rect.centerx, rect.y + 23),
+                    "center",
+                )
+                draw_text(
+                    self.screen,
+                    level.name,
+                    self.font_md,
+                    INK,
+                    (rect.centerx, rect.y + 58),
+                    "center",
+                )
+                self.draw_stars((rect.centerx, rect.y + 105), record.stars, 14)
+                score_text = (
+                    f"最佳 {record.best_score} 分"
+                    if record.best_score
+                    else "尚未通关"
+                )
+                draw_text(
+                    self.screen,
+                    score_text,
+                    self.font_small,
+                    MUTED,
+                    (rect.centerx, rect.y + 144),
+                    "center",
+                )
+            else:
+                draw_text(
+                    self.screen,
+                    "未解锁",
+                    self.font_md,
+                    (174, 189, 205),
+                    rect.center,
+                    "center",
+                )
+        self.select_home_button.draw(self.screen, self.font_body, mouse)
+
+    def draw_stars(
+        self,
+        center: tuple[int, int],
+        filled: int,
+        radius: int = 18,
+    ) -> None:
+        gap = radius * 2 + 10
+        start_x = center[0] - gap
+        for index in range(3):
+            points: list[tuple[float, float]] = []
+            star_center = (start_x + index * gap, center[1])
+            for point_index in range(10):
+                angle = -math.pi / 2 + point_index * math.pi / 5
+                point_radius = radius if point_index % 2 == 0 else radius * 0.45
+                points.append(
+                    (
+                        star_center[0] + math.cos(angle) * point_radius,
+                        star_center[1] + math.sin(angle) * point_radius,
+                    )
+                )
+            color = ORANGE if index < filled else (185, 198, 211)
+            if index < filled:
+                pygame.draw.polygon(self.screen, color, points)
+            else:
+                pygame.draw.polygon(self.screen, color, points, 2)
 
     def draw_logo(self, center: tuple[int, int]) -> None:
         pygame.draw.circle(self.screen, (31, 65, 94), center, 88)
@@ -569,8 +850,11 @@ class GameApp:
         self.draw_stat_card((684, 313), "失误机会", str(self.board.mistakes_left), RED)
         minutes, seconds = divmod(int(self.elapsed_time), 60)
         self.draw_stat_card((684, 402), "本关用时", f"{minutes:02d}:{seconds:02d}", CYAN)
+        self.auto_button.text = "停止 AI" if self.auto_solving else "AI 解题"
         self.restart_button.draw(self.screen, self.font_body, mouse)
+        self.undo_button.draw(self.screen, self.font_body, mouse)
         self.hint_button.draw(self.screen, self.font_body, mouse)
+        self.auto_button.draw(self.screen, self.font_body, mouse)
         self.home_button.draw(self.screen, self.font_body, mouse)
 
     def draw_stat_card(
@@ -608,16 +892,29 @@ class GameApp:
             if success
             else "失误机会已经用完，再观察一下箭头顺序吧"
         )
-        draw_text(self.screen, title, self.font_lg, INK, (500, 330), "center")
-        draw_text(self.screen, subtitle, self.font_small, MUTED, (500, 379), "center")
+        title_y = 352 if success else 335
+        if success:
+            self.draw_stars((500, 305), self.result_stars, 17)
+        draw_text(self.screen, title, self.font_lg, INK, (500, title_y), "center")
+        draw_text(self.screen, subtitle, self.font_small, MUTED, (500, 392), "center")
         draw_text(
             self.screen,
-            f"点击次数 {self.level_clicks}    用时 {int(self.elapsed_time)} 秒",
+            f"点击 {self.level_clicks} 次  ·  用时 {int(self.elapsed_time)} 秒  ·  提示 {self.hints_used} 次",
             self.font_body,
             color,
-            (500, 430),
+            (500, 432),
             "center",
         )
+        if success:
+            best_score = self.progress.record_for(self.level_index).best_score
+            draw_text(
+                self.screen,
+                f"本局 {self.result_score} 分  ·  最佳 {best_score} 分",
+                self.font_body,
+                ORANGE,
+                (500, 469),
+                "center",
+            )
         self.result_primary.text = "下一关" if success else "重新挑战"
         self.result_secondary.text = "重玩本关" if success else "返回首页"
         self.result_primary.draw(self.screen, self.font_body, mouse)
@@ -651,7 +948,7 @@ class GameApp:
 
 
 def capture_screenshots(output_directory: str | Path) -> list[Path]:
-    """生成 README 所需的四张真实界面截图。"""
+    """生成 README 所需的真实界面截图。"""
 
     output = Path(output_directory)
     output.mkdir(parents=True, exist_ok=True)
@@ -660,12 +957,19 @@ def capture_screenshots(output_directory: str | Path) -> list[Path]:
 
     captures = (
         ("start.png", "start"),
+        ("levels.png", "level_select"),
         ("game.png", "playing"),
         ("success.png", "level_clear"),
         ("failure.png", "failed"),
     )
     for filename, state in captures:
-        if state == "playing":
+        if state == "level_select":
+            app.progress.unlocked_level = 4
+            app.progress.record_completion(0, 3, 1320, 18.0, len(LEVELS))
+            app.progress.record_completion(1, 2, 980, 31.0, len(LEVELS))
+            app.progress.record_completion(2, 1, 720, 49.0, len(LEVELS))
+            app.state = "level_select"
+        elif state == "playing":
             app.start_level(1)
             app.board.mistakes_left -= 1
             app.collision = CollisionAnimation((1, 3), (4, 3), elapsed=0.18)
@@ -675,6 +979,12 @@ def capture_screenshots(output_directory: str | Path) -> list[Path]:
             app.state = "level_clear"
             app.level_clicks = len(app.level.arrows)
             app.elapsed_time = 23.0
+            app.hints_used = 0
+            app.result_stars = 3
+            app.result_score = 1270
+            app.progress.record_completion(
+                app.level_index, 3, 1270, 23.0, len(LEVELS)
+            )
         elif state == "failed":
             app.start_level(2)
             app.board.mistakes_left = 0
