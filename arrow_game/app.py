@@ -1144,8 +1144,11 @@ def capture_screenshots(output_directory: str | Path) -> list[Path]:
         ("start.png", "start"),
         ("levels.png", "level_select"),
         ("game.png", "playing"),
+        ("hint.png", "hint_demo"),
+        ("auto_solve.png", "auto_demo"),
         ("success.png", "level_clear"),
         ("failure.png", "failed"),
+        ("complete.png", "complete"),
     )
     for filename, state in captures:
         if state == "level_select":
@@ -1160,6 +1163,21 @@ def capture_screenshots(output_directory: str | Path) -> list[Path]:
             app.collision = CollisionAnimation((1, 3), (4, 3), elapsed=0.18)
             app.toast = "前方有阻挡，剩余 2 次机会"
             app.toast_time = 1.0
+        elif state == "hint_demo":
+            app.start_level(0)
+            solution = find_solution(app.board)
+            app.hint_position = solution[0] if solution else None
+            app.hint_time = 2.0
+            app.hints_used = 1
+            app.toast = "青色光圈标出了可安全飞出的箭头"
+            app.toast_time = 2.0
+        elif state == "auto_demo":
+            app.start_level(0)
+            app.start_auto_solve()
+            app.update(0.5)
+            app.update(0.02)
+            app.toast = "AI 正在按求解序列自动演示"
+            app.toast_time = 1.5
         elif state == "level_clear":
             app.state = "level_clear"
             app.level_clicks = len(app.level.arrows)
@@ -1176,6 +1194,17 @@ def capture_screenshots(output_directory: str | Path) -> list[Path]:
             app.level_clicks = 5
             app.elapsed_time = 18.0
             app.state = "failed"
+        elif state == "complete":
+            app.progress.unlocked_level = len(LEVELS) - 1
+            for index in range(len(LEVELS)):
+                app.progress.record_completion(
+                    index,
+                    3 if index < 3 else 2,
+                    1200 - index * 70,
+                    20.0 + index * 6,
+                    len(LEVELS),
+                )
+            app.state = "complete"
         else:
             app.state = state
         path = output / filename

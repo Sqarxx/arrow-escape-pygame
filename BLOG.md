@@ -34,13 +34,27 @@
 
 ![游戏过程与碰撞反馈](docs/screenshots/game.png)
 
-### 4. 通关与失败界面
+### 4. 提示与 AI 自动解题
+
+提示功能会用青色光圈标出当前可以安全飞出的箭头；AI 自动解题会按求解器返回的顺序逐支点击，并保留正常的飞行动画。
+
+| 提示功能 | AI 自动解题过程 |
+| --- | --- |
+| ![提示功能](docs/screenshots/hint.png) | ![AI 自动解题](docs/screenshots/auto_solve.png) |
+
+### 5. 通关与失败界面
 
 通关时显示星级、本局得分、最佳分数、点击次数和用时；失误次数耗尽时进入失败页，并可重新挑战。
 
 | 通关界面 | 失败界面 |
 | --- | --- |
 | ![通关界面](docs/screenshots/success.png) | ![失败界面](docs/screenshots/failure.png) |
+
+### 6. 全部通关界面
+
+完成 5 个原创关卡后显示全部通关结果，玩家可以从头挑战或返回首页。
+
+![全部通关界面](docs/screenshots/complete.png)
 
 ## 二、需求分析与功能设计
 
@@ -313,7 +327,7 @@ OK
 python main.py --capture-screenshots docs/screenshots
 ```
 
-五张截图均为 1000×760，经过人工检查，没有出现文字重叠、字体缺失或按钮越界。
+八张截图均为 1000×760，经过人工检查，没有出现文字重叠、字体缺失或按钮越界。
 
 ## 七、Git 与项目提交
 
