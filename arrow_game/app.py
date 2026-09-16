@@ -17,9 +17,9 @@ from .progress import ProgressData, ProgressStore, calculate_rating
 WINDOW_WIDTH = 1000
 WINDOW_HEIGHT = 760
 FPS = 60
-BOARD_LEFT = 58
-BOARD_TOP = 142
-CELL_SIZE = 78
+BOARD_LEFT = 248
+BOARD_TOP = 150
+CELL_SIZE = 72
 
 BG_TOP = (249, 252, 251)
 BG_BOTTOM = (229, 245, 241)
@@ -37,6 +37,14 @@ WHITE = (255, 255, 255)
 SOFT_TEAL = (234, 248, 245)
 SOFT_RED = (255, 235, 237)
 SHADOW = (180, 205, 200)
+ARROW_COLORS = (
+    (30, 164, 147),
+    (225, 111, 119),
+    (91, 153, 219),
+    (239, 168, 96),
+    (151, 126, 205),
+    (105, 183, 116),
+)
 LEVEL_TIME_TARGETS = (25, 32, 40, 48, 60)
 
 
@@ -217,13 +225,13 @@ class GameApp:
         self.font_body = make_font(20)
         self.font_small = make_font(16)
 
-        self.start_button = Button(pygame.Rect(385, 480, 230, 58), "开始游戏")
-        self.select_button = Button(pygame.Rect(385, 550, 230, 52), "关卡选择", False)
-        self.restart_button = Button(pygame.Rect(684, 500, 120, 46), "重新开始", False)
-        self.undo_button = Button(pygame.Rect(814, 500, 120, 46), "撤销一步", False)
-        self.hint_button = Button(pygame.Rect(684, 558, 120, 46), "提示一步", False)
-        self.auto_button = Button(pygame.Rect(814, 558, 120, 46), "AI 解题", False)
-        self.home_button = Button(pygame.Rect(684, 616, 250, 46), "返回首页", False)
+        self.start_button = Button(pygame.Rect(365, 525, 270, 58), "开始游戏")
+        self.select_button = Button(pygame.Rect(385, 596, 230, 48), "关卡选择", False)
+        self.restart_button = Button(pygame.Rect(118, 694, 140, 44), "重新开始", False)
+        self.undo_button = Button(pygame.Rect(274, 694, 140, 44), "撤销一步", False)
+        self.hint_button = Button(pygame.Rect(430, 694, 140, 44), "提示一步", False)
+        self.auto_button = Button(pygame.Rect(586, 694, 140, 44), "AI 解题", False)
+        self.home_button = Button(pygame.Rect(742, 694, 140, 44), "返回首页", False)
         self.select_home_button = Button(pygame.Rect(375, 642, 250, 50), "返回首页", False)
         self.result_primary = Button(pygame.Rect(362, 510, 276, 56), "下一关")
         self.result_secondary = Button(pygame.Rect(362, 580, 276, 50), "重玩本关", False)
@@ -585,49 +593,67 @@ class GameApp:
 
     def draw_start_screen(self) -> None:
         mouse = pygame.mouse.get_pos()
-        draw_text(self.screen, "一箭又一箭", self.font_xl, INK, (500, 150), "center")
+        self.draw_arrow_pattern()
+        self.draw_outlined_text(
+            "一箭又一箭",
+            self.font_xl,
+            ORANGE,
+            INK,
+            (500, 108),
+            2,
+        )
         draw_text(
             self.screen,
             "ARROW  ESCAPE",
             self.font_small,
-            CYAN,
-            (500, 205),
+            BLUE,
+            (500, 160),
             "center",
         )
         draw_text(
             self.screen,
-            "看清方向 · 判断阻挡 · 按序清空棋盘",
+            "看方向 · 找顺序 · 让箭头全部出发",
             self.font_body,
             MUTED,
-            (500, 253),
+            (500, 200),
             "center",
         )
-        self.draw_logo((500, 365))
+        self.draw_mascot((500, 345))
         self.start_button.text = (
             "继续游戏" if self.progress.unlocked_level > 0 else "开始游戏"
         )
-        self.start_button.draw(self.screen, self.font_md, mouse)
-        self.select_button.draw(self.screen, self.font_body, mouse)
         draw_text(
             self.screen,
-            "R 重开｜H 提示｜U 撤销｜A 自动解题｜Esc 返回",
-            self.font_small,
-            MUTED,
-            (500, 633),
+            f"第 {self.progress.unlocked_level + 1} 关",
+            self.font_md,
+            INK,
+            (500, 480),
             "center",
         )
+        self.start_button.draw(self.screen, self.font_md, mouse)
+        self.draw_play_triangle((401, 554))
+        self.select_button.draw(self.screen, self.font_body, mouse)
         total_stars = sum(record.stars for record in self.progress.records.values())
         draw_text(
             self.screen,
             f"已解锁 {self.progress.unlocked_level + 1}/{len(LEVELS)} 关  ·  累计 {total_stars} 星",
             self.font_small,
             MUTED,
-            (500, 674),
+            (500, 671),
+            "center",
+        )
+        draw_text(
+            self.screen,
+            "R 重开  H 提示  U 撤销  A 自动解题",
+            self.font_small,
+            MUTED,
+            (500, 709),
             "center",
         )
 
     def draw_level_select_screen(self) -> None:
         mouse = pygame.mouse.get_pos()
+        self.draw_arrow_pattern()
         draw_text(self.screen, "选择关卡", self.font_xl, INK, (500, 72), "center")
         draw_text(
             self.screen,
@@ -718,42 +744,114 @@ class GameApp:
             else:
                 pygame.draw.polygon(self.screen, color, points, 2)
 
-    def draw_logo(self, center: tuple[int, int]) -> None:
-        pygame.draw.circle(self.screen, SOFT_TEAL, center, 88)
-        pygame.draw.circle(self.screen, CYAN, center, 88, 3)
-        arrow = Arrow(0, 0, Direction.RIGHT)
-        self.draw_arrow_icon(self.screen, arrow, center, 68, BLUE)
-        for angle in (45, 135, 225, 315):
-            radians = math.radians(angle)
-            point = (
-                int(center[0] + math.cos(radians) * 110),
-                int(center[1] + math.sin(radians) * 110),
-            )
-            pygame.draw.circle(self.screen, BLUE, point, 7)
+    def draw_outlined_text(
+        self,
+        text: str,
+        font: pygame.font.Font,
+        fill: tuple[int, int, int],
+        outline: tuple[int, int, int],
+        center: tuple[int, int],
+        width: int,
+    ) -> None:
+        for dx in range(-width, width + 1):
+            for dy in range(-width, width + 1):
+                if dx * dx + dy * dy <= width * width:
+                    draw_text(
+                        self.screen,
+                        text,
+                        font,
+                        outline,
+                        (center[0] + dx, center[1] + dy),
+                        "center",
+                    )
+        draw_text(self.screen, text, font, fill, center, "center")
+
+    def draw_arrow_pattern(self) -> None:
+        pattern = pygame.Surface((WINDOW_WIDTH, WINDOW_HEIGHT), pygame.SRCALPHA)
+        directions = (Direction.DOWN, Direction.UP, Direction.LEFT, Direction.RIGHT)
+        for row, y in enumerate(range(30, WINDOW_HEIGHT, 86)):
+            offset = 42 if row % 2 else 0
+            for col, x in enumerate(range(-20 + offset, WINDOW_WIDTH + 40, 112)):
+                arrow = Arrow(0, 0, directions[(row + col) % len(directions)])
+                self.draw_arrow_icon(
+                    pattern,
+                    arrow,
+                    (x, y),
+                    34,
+                    BLUE,
+                    22,
+                )
+        self.screen.blit(pattern, (0, 0))
+
+    def draw_mascot(self, center: tuple[int, int]) -> None:
+        cx, cy = center
+        points = [
+            (cx - 100, cy - 47),
+            (cx + 34, cy - 47),
+            (cx + 34, cy - 78),
+            (cx + 112, cy),
+            (cx + 34, cy + 78),
+            (cx + 34, cy + 47),
+            (cx - 100, cy + 47),
+        ]
+        shadow_points = [(x, y + 8) for x, y in points]
+        pygame.draw.polygon(self.screen, SHADOW, shadow_points)
+        pygame.draw.polygon(self.screen, CYAN, points)
+        pygame.draw.polygon(self.screen, INK, points, 6)
+        pygame.draw.line(
+            self.screen,
+            (174, 235, 226),
+            (cx - 79, cy - 27),
+            (cx + 25, cy - 27),
+            7,
+        )
+        for eye_x in (cx - 52, cx - 5):
+            pygame.draw.circle(self.screen, WHITE, (eye_x, cy - 2), 23)
+            pygame.draw.circle(self.screen, INK, (eye_x + 4, cy + 1), 10)
+            pygame.draw.circle(self.screen, WHITE, (eye_x + 7, cy - 3), 3)
+        pygame.draw.line(
+            self.screen,
+            INK,
+            (cx - 74, cy - 33),
+            (cx - 43, cy - 26),
+            6,
+        )
+        pygame.draw.line(
+            self.screen,
+            INK,
+            (cx - 17, cy - 26),
+            (cx + 12, cy - 34),
+            6,
+        )
+        pygame.draw.arc(
+            self.screen,
+            INK,
+            pygame.Rect(cx - 48, cy + 8, 58, 35),
+            math.radians(15),
+            math.radians(165),
+            4,
+        )
+        pygame.draw.circle(self.screen, (243, 152, 157), (cx - 81, cy + 21), 8)
+        pygame.draw.circle(self.screen, (243, 152, 157), (cx + 23, cy + 21), 8)
+
+    def draw_play_triangle(self, center: tuple[int, int]) -> None:
+        cx, cy = center
+        pygame.draw.polygon(
+            self.screen,
+            WHITE,
+            ((cx - 8, cy - 11), (cx - 8, cy + 11), (cx + 12, cy)),
+        )
 
     def draw_game_screen(self) -> None:
         mouse = pygame.mouse.get_pos()
-        draw_text(
-            self.screen,
-            f"第 {self.level_index + 1} 关  ·  {self.level.name}",
-            self.font_lg,
-            INK,
-            (58, 58),
-        )
-        draw_text(
-            self.screen,
-            "点击箭头，前方无遮挡即可飞出",
-            self.font_small,
-            MUTED,
-            (60, 106),
-        )
+        self.draw_top_hud()
         self.draw_board(mouse)
-        self.draw_side_panel(mouse)
         self.draw_flying_animations()
+        self.draw_bottom_toolbar(mouse)
 
         if self.toast_time > 0:
             toast_width = min(520, max(270, len(self.toast) * 22 + 48))
-            toast = pygame.Rect((WINDOW_WIDTH - toast_width) // 2, 704, toast_width, 38)
+            toast = pygame.Rect((WINDOW_WIDTH - toast_width) // 2, 651, toast_width, 36)
             warning = "阻挡" in self.toast or "失败" in self.toast or "没有" in self.toast
             toast_color = SOFT_RED if warning else SOFT_TEAL
             text_color = RED if warning else INK
@@ -761,6 +859,103 @@ class GameApp:
             pygame.draw.rect(self.screen, toast_color, toast, border_radius=19)
             pygame.draw.rect(self.screen, border_color, toast, 1, border_radius=19)
             draw_text(self.screen, self.toast, self.font_small, text_color, toast.center, "center")
+
+    def draw_top_hud(self) -> None:
+        left = pygame.Rect(48, 26, 250, 100)
+        center = pygame.Rect(365, 18, 270, 116)
+        right = pygame.Rect(702, 26, 250, 100)
+        for rect in (left, center, right):
+            pygame.draw.rect(self.screen, SHADOW, rect.move(0, 3), border_radius=18)
+            pygame.draw.rect(self.screen, WHITE, rect, border_radius=18)
+            pygame.draw.rect(self.screen, GRID, rect, 1, border_radius=18)
+
+        draw_text(
+            self.screen,
+            f"第 {self.level_index + 1} 关",
+            self.font_md,
+            BLUE,
+            (left.centerx, left.y + 31),
+            "center",
+        )
+        draw_text(
+            self.screen,
+            self.level.name,
+            self.font_small,
+            MUTED,
+            (left.centerx, left.y + 70),
+            "center",
+        )
+
+        heart_gap = 38
+        heart_start = center.centerx - (self.board.max_mistakes - 1) * heart_gap / 2
+        for index in range(self.board.max_mistakes):
+            color = RED if index < self.board.mistakes_left else (207, 219, 216)
+            self.draw_heart((int(heart_start + index * heart_gap), center.y + 38), 13, color)
+        minutes, seconds = divmod(int(self.elapsed_time), 60)
+        pygame.draw.circle(self.screen, BLUE, (center.centerx - 42, center.y + 85), 12, 2)
+        pygame.draw.line(
+            self.screen,
+            BLUE,
+            (center.centerx - 42, center.y + 85),
+            (center.centerx - 42, center.y + 77),
+            2,
+        )
+        pygame.draw.line(
+            self.screen,
+            BLUE,
+            (center.centerx - 42, center.y + 85),
+            (center.centerx - 35, center.y + 88),
+            2,
+        )
+        draw_text(
+            self.screen,
+            f"{minutes:02d}:{seconds:02d}",
+            self.font_md,
+            INK,
+            (center.centerx + 22, center.y + 85),
+            "center",
+        )
+
+        draw_text(
+            self.screen,
+            "剩余箭头",
+            self.font_small,
+            MUTED,
+            (right.centerx, right.y + 28),
+            "center",
+        )
+        draw_text(
+            self.screen,
+            str(self.board.remaining),
+            self.font_lg,
+            BLUE,
+            (right.centerx, right.y + 67),
+            "center",
+        )
+
+    def draw_heart(
+        self,
+        center: tuple[int, int],
+        size: int,
+        color: tuple[int, int, int],
+    ) -> None:
+        cx, cy = center
+        pygame.draw.circle(self.screen, color, (cx - size // 2, cy - size // 3), size // 2)
+        pygame.draw.circle(self.screen, color, (cx + size // 2, cy - size // 3), size // 2)
+        pygame.draw.polygon(
+            self.screen,
+            color,
+            ((cx - size, cy - size // 4), (cx + size, cy - size // 4), (cx, cy + size)),
+        )
+
+    def draw_bottom_toolbar(self, mouse: tuple[int, int]) -> None:
+        pygame.draw.line(self.screen, GRID, (72, 680), (928, 680), 1)
+        self.auto_button.text = "停止 AI" if self.auto_solving else "AI 解题"
+        self.restart_button.draw(self.screen, self.font_small, mouse)
+        self.undo_button.draw(self.screen, self.font_small, mouse)
+        self.hint_button.draw(self.screen, self.font_small, mouse)
+        self.auto_button.draw(self.screen, self.font_small, mouse)
+        self.home_button.draw(self.screen, self.font_small, mouse)
 
     def draw_board(self, mouse: tuple[int, int]) -> None:
         rect = self.board_rect
@@ -783,11 +978,11 @@ class GameApp:
         hover_cell = self.pixel_to_cell(mouse)
         for position, arrow in self.board.arrows.items():
             center = self.cell_center(position)
-            color = BLUE
-            scale = 50
+            color = self.arrow_color(arrow)
+            scale = 47
             if position == hover_cell and self.collision is None:
-                color = BLUE_DARK
-                scale = 56
+                color = tuple(max(0, channel - 24) for channel in color)
+                scale = 53
             if self.hint_position == position:
                 pulse = 31 + int(math.sin(pygame.time.get_ticks() / 140) * 4)
                 pygame.draw.circle(self.screen, CYAN, center, pulse, 4)
@@ -811,6 +1006,12 @@ class GameApp:
             start = self.cell_center(self.collision.position)
             end = self.cell_center(self.collision.blocker)
             pygame.draw.line(self.screen, (*RED,), start, end, 3)
+
+    def arrow_color(self, arrow: Arrow) -> tuple[int, int, int]:
+        index = (arrow.row * 3 + arrow.col * 5 + arrow.direction.value[0]) % len(
+            ARROW_COLORS
+        )
+        return ARROW_COLORS[index]
 
     def draw_arrow_icon(
         self,
@@ -846,41 +1047,9 @@ class GameApp:
                 animation.arrow,
                 position,
                 52 + int(progress * 12),
-                CYAN,
+                self.arrow_color(animation.arrow),
                 alpha,
             )
-
-    def draw_side_panel(self, mouse: tuple[int, int]) -> None:
-        panel = pygame.Rect(654, 142, 304, 570)
-        pygame.draw.rect(self.screen, SHADOW, panel.move(0, 5), border_radius=22)
-        pygame.draw.rect(self.screen, PANEL, panel, border_radius=22)
-        pygame.draw.rect(self.screen, GRID, panel, 1, border_radius=22)
-        draw_text(self.screen, "关卡状态", self.font_md, INK, (684, 175))
-        self.draw_stat_card((684, 224), "剩余箭头", str(self.board.remaining), BLUE)
-        self.draw_stat_card((684, 313), "失误机会", str(self.board.mistakes_left), RED)
-        minutes, seconds = divmod(int(self.elapsed_time), 60)
-        self.draw_stat_card((684, 402), "本关用时", f"{minutes:02d}:{seconds:02d}", CYAN)
-        self.auto_button.text = "停止 AI" if self.auto_solving else "AI 解题"
-        self.restart_button.draw(self.screen, self.font_body, mouse)
-        self.undo_button.draw(self.screen, self.font_body, mouse)
-        self.hint_button.draw(self.screen, self.font_body, mouse)
-        self.auto_button.draw(self.screen, self.font_body, mouse)
-        self.home_button.draw(self.screen, self.font_body, mouse)
-
-    def draw_stat_card(
-        self,
-        position: tuple[int, int],
-        label: str,
-        value: str,
-        accent: tuple[int, int, int],
-    ) -> None:
-        rect = pygame.Rect(position[0], position[1], 250, 72)
-        fill = SOFT_RED if accent == RED else SOFT_TEAL
-        pygame.draw.rect(self.screen, fill, rect, border_radius=14)
-        pygame.draw.rect(self.screen, GRID, rect, 1, border_radius=14)
-        pygame.draw.rect(self.screen, accent, (rect.x, rect.y, 7, rect.height), border_radius=4)
-        draw_text(self.screen, label, self.font_small, MUTED, (rect.x + 25, rect.y + 13))
-        draw_text(self.screen, value, self.font_md, accent, (rect.right - 22, rect.centery), "midright")
 
     def draw_result_screen(self, success: bool) -> None:
         mouse = pygame.mouse.get_pos()
