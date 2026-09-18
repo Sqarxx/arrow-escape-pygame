@@ -4,6 +4,14 @@
 
 ![游戏界面](docs/screenshots/game.png)
 
+## 动态演示
+
+| 箭头正常飞出 | 碰撞与失误反馈 |
+| --- | --- |
+| ![箭头正常飞出](docs/gifs/arrow_escape.gif) | ![碰撞反馈](docs/gifs/collision.gif) |
+
+其余开始、提示与撤销、自动解题、失败重开动画见 [docs/gifs](docs/gifs)。
+
 ## 已完成功能
 
 - 上、下、左、右四种单格箭头和同行、同列路径判断
@@ -57,12 +65,19 @@ python -m unittest discover -v
 python main.py --capture-screenshots docs/screenshots
 ```
 
+重新生成博客功能演示 GIF：
+
+```powershell
+python main.py --capture-gifs docs/gifs
+```
+
 ## 目录
 
 ```text
 arrow_game/          游戏代码
 tests/               自动化测试
 docs/
+  gifs/              功能演示 GIF
   screenshots/       游戏截图
   blog.md             课程博客正文
   development-log.md  开发与 AIGC 使用记录
