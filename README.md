@@ -2,15 +2,15 @@
 
 这是我用 Python 和 Pygame 完成的一款点击式箭头解谜小游戏。箭头只能沿自身方向飞行；如果前方还有其他箭头，就会发生碰撞并扣除一次失误机会。把棋盘上的箭头全部清空即可过关。
 
-![游戏界面](docs/screenshots/game.png)
+![游戏界面](docs/blog-assets/game.png)
 
 ## 动态演示
 
 | 箭头正常飞出 | 碰撞与失误反馈 |
 | --- | --- |
-| ![箭头正常飞出](docs/gifs/arrow_escape.gif) | ![碰撞反馈](docs/gifs/collision.gif) |
+| ![箭头正常飞出](docs/blog-assets/arrow_escape.gif) | ![碰撞反馈](docs/blog-assets/collision.gif) |
 
-其余开始、提示与撤销、自动解题、失败重开动画见 [docs/gifs](docs/gifs)。
+其余开始、提示与撤销、自动解题、失败重开动画见 [docs/blog-assets](docs/blog-assets)。
 
 ## 已完成功能
 
@@ -62,13 +62,13 @@ python -m unittest discover -v
 如需重新生成文档截图：
 
 ```powershell
-python main.py --capture-screenshots docs/screenshots
+python main.py --capture-screenshots docs/blog-assets
 ```
 
 重新生成博客功能演示 GIF：
 
 ```powershell
-python main.py --capture-gifs docs/gifs
+python main.py --capture-gifs docs/blog-assets
 ```
 
 ## 目录
@@ -77,8 +77,7 @@ python main.py --capture-gifs docs/gifs
 arrow_game/          游戏代码
 tests/               自动化测试
 docs/
-  gifs/              功能演示 GIF
-  screenshots/       游戏截图
+  blog-assets/       博客截图和功能 GIF
   blog.md             课程博客正文
   development-log.md  开发与 AIGC 使用记录
   test-report.md      测试记录

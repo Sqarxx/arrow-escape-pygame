@@ -14,31 +14,31 @@
 
 开始界面使用了浅青绿色背景和简单的箭头图案，整体没有继续采用最开始的深色界面。
 
-![开始界面](screenshots/start.png)
+![开始界面](blog-assets/start.png)
 
 游戏内包含关卡、剩余箭头、失误机会和用时等信息。青绿色表示正常状态，点击错误时会使用淡红色做碰撞提示。
 
-![游戏界面](screenshots/game.png)
+![游戏界面](blog-assets/game.png)
 
 除了基础的重新开始，我还加入了提示、撤销和自动演示功能。提示只显示当前一步，自动演示会按照可行顺序完成当前关卡。
 
 | 提示功能 | 自动演示 |
 | --- | --- |
-| ![提示功能](screenshots/hint.png) | ![自动演示](screenshots/auto_solve.png) |
+| ![提示功能](blog-assets/hint.png) | ![自动演示](blog-assets/auto_solve.png) |
 
 本关箭头清空后会显示通关面板；失误机会用完则进入失败界面，两种情况都可以继续操作。
 
 | 通关界面 | 失败界面 |
 | --- | --- |
-| ![通关界面](screenshots/success.png) | ![失败界面](screenshots/failure.png) |
+| ![通关界面](blog-assets/success.png) | ![失败界面](blog-assets/failure.png) |
 
 五关全部完成后会显示总通关结果。
 
-![全部通关](screenshots/complete.png)
+![全部通关](blog-assets/complete.png)
 
 关卡选择界面会记录已经解锁的关卡和每关取得的星级。
 
-![关卡选择](screenshots/levels.png)
+![关卡选择](blog-assets/levels.png)
 
 ### 动态演示
 
@@ -46,15 +46,15 @@
 
 | 开始游戏 | 箭头成功飞出 |
 | --- | --- |
-| ![开始游戏](gifs/start_game.gif) | ![箭头成功飞出](gifs/arrow_escape.gif) |
+| ![开始游戏](blog-assets/start_game.gif) | ![箭头成功飞出](blog-assets/arrow_escape.gif) |
 
 | 碰撞并扣除机会 | 提示与撤销 |
 | --- | --- |
-| ![碰撞反馈](gifs/collision.gif) | ![提示与撤销](gifs/hint_undo.gif) |
+| ![碰撞反馈](blog-assets/collision.gif) | ![提示与撤销](blog-assets/hint_undo.gif) |
 
 | 自动解题并通关 | 失败后重新开始 |
 | --- | --- |
-| ![自动解题](gifs/auto_solve.gif) | ![失败后重新开始](gifs/failure_restart.gif) |
+| ![自动解题](blog-assets/auto_solve.gif) | ![失败后重新开始](blog-assets/failure_restart.gif) |
 
 ## 二、游戏规则和主要功能
 
