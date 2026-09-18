@@ -42,19 +42,19 @@
 
 ### 动态演示
 
-为了更直观地展示实际操作，我用程序逐帧记录了游戏自身的界面。GIF 中的箭头移动、碰撞晃动、数字变化和结果页面都来自真实游戏状态，并不是后期拼接的示意图。
+为了更直观地展示实际操作，我用程序逐帧记录了游戏自身的界面。动图中的箭头移动、碰撞晃动、数字变化和结果页面都来自真实游戏状态，并不是后期拼接的示意图。动画使用 1000×760 全分辨率、20 帧/秒的无损动态 WebP，避免普通 GIF 的色彩数量限制。
 
 | 开始游戏 | 箭头成功飞出 |
 | --- | --- |
-| ![开始游戏](blog-assets/start_game.gif) | ![箭头成功飞出](blog-assets/arrow_escape.gif) |
+| ![开始游戏](blog-assets/start_game.webp) | ![箭头成功飞出](blog-assets/arrow_escape.webp) |
 
 | 碰撞并扣除机会 | 提示与撤销 |
 | --- | --- |
-| ![碰撞反馈](blog-assets/collision.gif) | ![提示与撤销](blog-assets/hint_undo.gif) |
+| ![碰撞反馈](blog-assets/collision.webp) | ![提示与撤销](blog-assets/hint_undo.webp) |
 
 | 自动解题并通关 | 失败后重新开始 |
 | --- | --- |
-| ![自动解题](blog-assets/auto_solve.gif) | ![失败后重新开始](blog-assets/failure_restart.gif) |
+| ![自动解题](blog-assets/auto_solve.webp) | ![失败后重新开始](blog-assets/failure_restart.webp) |
 
 ## 二、游戏规则和主要功能
 
@@ -73,7 +73,7 @@
 - 撤销上一步；
 - 自动演示当前关卡；
 - 本地保存解锁进度和最佳成绩；
-- 一键生成课程博客所需的界面截图和功能 GIF。
+- 一键生成课程博客所需的无损截图和高质量功能动图。
 
 这些附加功能都建立在基础玩法已经完成的前提下，没有修改“同一行或同一列检测阻挡”的判定规则。
 
@@ -91,7 +91,7 @@ arrow-escape-pygame/
 │  ├─ core.py              路径检测、游戏状态和求解器
 │  ├─ levels.py            关卡数据
 │  ├─ progress.py          本地进度、评分和存档
-│  └─ media.py             功能演示 GIF 录制
+│  └─ media.py             高质量功能动图录制
 ├─ tests/                  自动化测试
 └─ docs/                   博客、开发记录、测试报告和截图
 ```

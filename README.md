@@ -8,7 +8,7 @@
 
 | 箭头正常飞出 | 碰撞与失误反馈 |
 | --- | --- |
-| ![箭头正常飞出](docs/blog-assets/arrow_escape.gif) | ![碰撞反馈](docs/blog-assets/collision.gif) |
+| ![箭头正常飞出](docs/blog-assets/arrow_escape.webp) | ![碰撞反馈](docs/blog-assets/collision.webp) |
 
 其余开始、提示与撤销、自动解题、失败重开动画见 [docs/blog-assets](docs/blog-assets)。
 
@@ -65,10 +65,10 @@ python -m unittest discover -v
 python main.py --capture-screenshots docs/blog-assets
 ```
 
-重新生成博客功能演示 GIF：
+重新生成博客高质量功能动图：
 
 ```powershell
-python main.py --capture-gifs docs/blog-assets
+python main.py --capture-animations docs/blog-assets
 ```
 
 ## 目录
@@ -77,7 +77,7 @@ python main.py --capture-gifs docs/blog-assets
 arrow_game/          游戏代码
 tests/               自动化测试
 docs/
-  blog-assets/       博客截图和功能 GIF
+  blog-assets/       无损博客截图和高质量功能动图
   blog.md             课程博客正文
   development-log.md  开发与 AIGC 使用记录
   test-report.md      测试记录
